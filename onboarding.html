@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zen Browser</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap');
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --accent: #aac7ff;
+  --accent-h: #c8dbff;
+  --text: rgba(255,255,255,0.92);
+  --text2: rgba(255,255,255,0.52);
+  --text3: rgba(255,255,255,0.28);
+  --border: rgba(255,255,255,0.10);
+  --card-bg: rgba(255,255,255,0.06);
+  --card-bg-h: rgba(255,255,255,0.10);
+  --card-on: rgba(170,199,255,0.14);
+}
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  /* Fully transparent — acrylic blur comes from OS via main.py */
+  background: transparent;
+  color: var(--text);
+  font-family: 'Inter', -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+/* Drag the frameless window from anywhere except interactive elements */
+body { -webkit-app-region: drag; }
+button, input, select, a, .tcard, .iitem, .scard, .eitem,
+.cwheel-wrap, .win-controls { -webkit-app-region: no-drag; }
+
+/* Rounded window container */
+.app {
+  width: 100%; height: 100%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  position: relative; overflow: hidden;
+  border-radius: 14px;
+  /* Subtle inner border for glass feel */
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+}
+
+/* Soft radial glow that shifts with accent */
+.glow {
+  position: absolute;
+  width: 600px; height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--glow-c, rgba(170,199,255,0.07)) 0%, transparent 65%);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  transition: background 0.8s ease;
+}
+
+/* Window controls (top-right) */
+.win-controls {
+  position: fixed; top: 13px; right: 16px;
+  display: flex; gap: 8px; z-index: 9999;
+}
+.wbtn {
+  width: 13px; height: 13px; border-radius: 50%;
+  border: none; cursor: pointer;
+  transition: opacity .2s, transform .15s;
+  opacity: 0.7;
+}
+.wbtn:hover { opacity: 1; transform: scale(1.15); }
+.wbtn-close { background: #ff5f57; }
+.wbtn-min   { background: #ffbd2e; }
+
+/* ===== SCREENS ===== */
+.screen {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 52px 44px;
+  opacity: 0;
+  transform: translateY(22px) scale(0.975);
+  transition: opacity .42s cubic-bezier(.4,0,.2,1),
+              transform .42s cubic-bezier(.4,0,.2,1);
+  pointer-events: none; z-index: 1;
+}
+.screen.active {
+  opacity: 1; transform: none;
+  pointer-events: all; z-index: 10;
+}
+.screen.out-fwd { opacity:0; transform: translateY(-26px) scale(0.975); }
+.screen.out-bck { opacity:0; transform: translateY(26px) scale(0.975); }
+
+/* ===== PROGRESS DOTS ===== */
+.dots {
+  position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 7px; z-index: 100;
+  opacity: 0; transition: opacity .5s ease .2s;
+}
+.dots.show { opacity: 1; }
+.dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--text3);
+  transition: all .35s cubic-bezier(.4,0,.2,1);
+}
+.dot.on { background: var(--accent); width: 20px; border-radius: 3px; }
+
+/* ===== SCREEN 0 — WELCOME (exact Zen style) ===== */
+.welcome-title {
+  font-family: 'Lora', Georgia, serif;
+  font-size: 52px;
+  font-weight: 400;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+  text-align: center;
+  color: rgba(255,255,255,0.90);
+  margin-bottom: 64px;
+  opacity: 0; transform: translateY(20px);
+  transition: opacity .65s cubic-bezier(.4,0,.2,1),
+              transform .65s cubic-bezier(.4,0,.2,1);
+}
+.screen.active .welcome-title {
+  opacity: 1; transform: none; transition-delay: .1s;
+}
+
+/* Arrow button — exactly like Zen */
+.arrow-btn {
+  background: rgba(255,255,255,0.88);
+  color: #1a1a1a;
+  border: none;
+  width: 120px; height: 44px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: all .25s cubic-bezier(.4,0,.2,1);
+  opacity: 0; transform: translateY(14px);
+  transition: opacity .5s cubic-bezier(.4,0,.2,1) .28s,
+              transform .5s cubic-bezier(.4,0,.2,1) .28s,
+              background .2s, box-shadow .2s, scale .15s;
+}
+.screen.active .arrow-btn { opacity: 1; transform: none; }
+.arrow-btn:hover {
+  background: rgba(255,255,255,1);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+  transform: translateY(-1px) !important;
+}
+.arrow-btn:active { transform: scale(0.97) !important; }
+.arrow-btn svg { width: 20px; height: 20px; }
+
+/* ===== SUBSEQUENT SCREENS — shared styles ===== */
+h1 {
+  font-family: 'Lora', Georgia, serif;
+  font-size: 32px; font-weight: 500;
+  letter-spacing: -0.3px; margin-bottom: 8px;
+  opacity: 0; transform: translateY(14px);
+  transition: opacity .5s cubic-bezier(.4,0,.2,1),
+              transform .5s cubic-bezier(.4,0,.2,1);
+}
+.screen.active h1 { opacity:1; transform:none; transition-delay:.12s; }
+
+.sub {
+  font-size: 14.5px; color: var(--text2); text-align: center;
+  max-width: 380px; line-height: 1.55; margin-bottom: 30px;
+  opacity: 0; transform: translateY(14px);
+  transition: opacity .5s cubic-bezier(.4,0,.2,1),
+              transform .5s cubic-bezier(.4,0,.2,1);
+}
+.screen.active .sub { opacity:1; transform:none; transition-delay:.22s; }
+
+.content {
+  opacity: 0; transform: translateY(14px);
+  transition: opacity .5s cubic-bezier(.4,0,.2,1),
+              transform .5s cubic-bezier(.4,0,.2,1);
+}
+.screen.active .content { opacity:1; transform:none; transition-delay:.3s; }
+
+/* Buttons */
+.pri {
+  background: rgba(255,255,255,0.90); color: #111;
+  border: none; padding: 11px 32px;
+  border-radius: 10px; font-size: 14px; font-weight: 600;
+  font-family: 'Inter', sans-serif; cursor: pointer;
+  transition: all .22s cubic-bezier(.4,0,.2,1);
+  opacity: 0; transform: translateY(12px);
+  transition: opacity .45s cubic-bezier(.4,0,.2,1) .44s,
+              transform .45s cubic-bezier(.4,0,.2,1) .44s,
+              background .2s, box-shadow .2s;
+}
+.screen.active .pri { opacity:1; transform:none; }
+.pri:hover {
+  background: #fff;
+  box-shadow: 0 4px 20px rgba(0,0,0,.25);
+  transform: translateY(-1px) !important;
+}
+.pri:active { transform: scale(.97) !important; }
+
+.sec {
+  background: transparent; color: var(--text2);
+  border: none; padding: 10px 20px;
+  border-radius: 10px; font-size: 13px; font-weight: 500;
+  font-family: 'Inter', sans-serif; cursor: pointer;
+  transition: all .22s; opacity:0; transform:translateY(12px);
+  transition: opacity .45s cubic-bezier(.4,0,.2,1) .48s,
+              transform .45s cubic-bezier(.4,0,.2,1) .48s,
+              background .2s, color .2s;
+}
+.screen.active .sec { opacity:1; transform:none; }
+.sec:hover { color: var(--text); background: rgba(255,255,255,.07); }
+
+.btns { display:flex; gap:10px; align-items:center; margin-top:6px; }
+
+/* ===== THEME CARDS ===== */
+.themes { display:flex; gap:13px; margin-bottom:22px; }
+.tcard {
+  width:148px; height:102px; border-radius:12px;
+  border: 1.5px solid var(--border); cursor:pointer;
+  transition: all .25s cubic-bezier(.4,0,.2,1);
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:8px;
+  position:relative; overflow:hidden;
+}
+.tcard:hover { border-color: rgba(255,255,255,.2); transform:translateY(-2px); }
+.tcard.on { border-color: var(--accent); background: var(--card-on); }
+.tcard-l { background: linear-gradient(145deg,#e8e8ee,#d8d8e0); }
+.tcard-d { background: linear-gradient(145deg,#1a1a2e,#24243e); }
+.tcard span { font-size:12px; font-weight:500; position:absolute; bottom:9px; }
+.tcard-l span { color:#333; }
+.ck {
+  position:absolute; top:7px; right:7px;
+  width:17px; height:17px; border-radius:50%;
+  background: var(--accent);
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; transform:scale(0);
+  transition: all .4s cubic-bezier(.34,1.56,.64,1);
+}
+.tcard.on .ck { opacity:1; transform:scale(1); }
+
+/* ===== COLOR WHEEL ===== */
+.csect { display:flex; flex-direction:column; align-items:center; gap:12px; margin-bottom:20px; }
+.clabel { font-size:11.5px; color:var(--text2); font-weight:500; text-transform:uppercase; letter-spacing:.7px; }
+.cwrap { position:relative; width:164px; height:164px; }
+.cwheel {
+  width:164px; height:164px; border-radius:50%; cursor:pointer;
+  background: conic-gradient(
+    hsl(0,68%,68%),hsl(40,68%,68%),hsl(80,68%,68%),hsl(120,68%,68%),
+    hsl(160,68%,68%),hsl(200,68%,68%),hsl(240,68%,68%),hsl(280,68%,68%),
+    hsl(320,68%,68%),hsl(360,68%,68%)
+  );
+}
+.cinner {
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  width:108px; height:108px; border-radius:50%;
+  background:rgba(15,8,32,0.92);
+  display:flex; align-items:center; justify-content:center;
+}
+.cprev {
+  width:34px; height:34px; border-radius:50%;
+  background: var(--accent);
+  transition: background .2s, box-shadow .2s;
+}
+.cthumb {
+  position:absolute; width:15px; height:15px; border-radius:50%;
+  background:#fff; border:2.5px solid rgba(15,8,32,0.9);
+  box-shadow:0 2px 7px rgba(0,0,0,.4); pointer-events:none; z-index:5;
+}
+
+/* ===== IMPORT LIST ===== */
+.ilist { display:flex; flex-direction:column; gap:7px; width:100%; max-width:360px; margin-bottom:22px; }
+.iitem {
+  display:flex; align-items:center; gap:12px;
+  padding:12px 15px; border-radius:10px;
+  border:1.5px solid var(--border); cursor:pointer;
+  background: var(--card-bg);
+  transition: all .22s cubic-bezier(.4,0,.2,1);
+}
+.iitem:hover { border-color:rgba(255,255,255,.18); background:var(--card-bg-h); }
+.iitem.on { border-color:var(--accent); background:var(--card-on); }
+.ico { width:25px; height:25px; flex-shrink:0; }
+.iname { font-size:13.5px; font-weight:500; flex:1; }
+.ichk {
+  width:17px; height:17px; border-radius:50%;
+  border:1.5px solid var(--border);
+  display:flex; align-items:center; justify-content:center;
+  flex-shrink:0; transition:all .22s;
+}
+.iitem.on .ichk { border-color:var(--accent); background:var(--accent); }
+
+/* ===== SEARCH CARDS ===== */
+.scards { display:flex; gap:13px; margin-bottom:22px; }
+.scard {
+  width:120px; height:112px; border-radius:12px;
+  border:1.5px solid var(--border); cursor:pointer;
+  background:var(--card-bg); position:relative;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:9px;
+  transition:all .22s cubic-bezier(.4,0,.2,1);
+}
+.scard:hover { border-color:rgba(255,255,255,.18); background:var(--card-bg-h); transform:translateY(-2px); }
+.scard.on { border-color:var(--accent); background:var(--card-on); }
+.scard .ck { top:6px; right:6px; width:15px; height:15px; }
+.sico { width:32px; height:32px; }
+.sname { font-size:12.5px; font-weight:500; }
+
+/* ===== ESSENTIALS GRID ===== */
+.egrid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; width:100%; max-width:390px; margin-bottom:22px; }
+.eitem {
+  display:flex; flex-direction:column; align-items:center; gap:6px;
+  padding:14px 5px; border-radius:10px;
+  border:1.5px solid var(--border); cursor:pointer;
+  background:var(--card-bg); position:relative;
+  transition:all .22s cubic-bezier(.4,0,.2,1);
+}
+.eitem:hover { border-color:rgba(255,255,255,.18); background:var(--card-bg-h); transform:translateY(-2px); }
+.eitem.on { border-color:var(--accent); background:var(--card-on); }
+.eico { width:24px; height:24px; }
+.ename { font-size:11px; font-weight:500; text-align:center; color:var(--text2); }
+.eitem.on .ename { color:var(--text); }
+.mck {
+  position:absolute; top:5px; right:5px;
+  width:13px; height:13px; border-radius:50%;
+  background:var(--accent);
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; transform:scale(0);
+  transition:all .4s cubic-bezier(.34,1.56,.64,1);
+}
+.eitem.on .mck { opacity:1; transform:scale(1); }
+
+/* ===== DONE ===== */
+.done-ico {
+  width:74px; height:74px; margin-bottom:20px;
+  opacity:0; transform:scale(0);
+  transition: all .6s cubic-bezier(.34,1.56,.64,1);
+}
+.screen.active .done-ico { opacity:1; transform:scale(1); transition-delay:.15s; }
+
+/* Confetti */
+.cw { position:fixed; inset:0; pointer-events:none; z-index:9000; overflow:hidden; }
+.cf {
+  position:absolute; border-radius:2px;
+  top:-8px; animation:cf 2.6s ease-in forwards;
+}
+@keyframes cf {
+  0%   { transform:translateY(0) rotate(0deg) scale(1); opacity:1; }
+  100% { transform:translateY(100vh) rotate(640deg) scale(.3); opacity:0; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="glow" id="glow"></div>
+
+  <!-- Window controls -->
+  <div class="win-controls">
+    <button class="wbtn wbtn-min"   onclick="window.close()" title="Minimize"></button>
+    <button class="wbtn wbtn-close" onclick="window.close()" title="Close"></button>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       SCREEN 0 — WELCOME (Zen-exact)
+  ═══════════════════════════════════ -->
+  <div class="screen active" id="s0">
+    <div class="welcome-title">
+      Welcome to<br>a calmer internet
+    </div>
+    <button class="arrow-btn" onclick="go(1)">
+      <svg viewBox="0 0 24 24" fill="none">
+        <path d="M5 12h14M13 6l6 6-6 6" stroke="#1a1a1a" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       SCREEN 1 — THEME
+  ═══════════════════════════════════ -->
+  <div class="screen" id="s1">
+    <h1>Make yourself at home</h1>
+    <p class="sub">Choose your preferred appearance and accent color.</p>
+    <div class="content">
+      <div class="themes">
+        <div class="tcard tcard-l" id="tl" onclick="setTheme('light')">
+          <div class="ck"><svg width="9" height="9" viewBox="0 0 12 12"><path d="M2 6L5 9L10 3" stroke="#111" stroke-width="2" stroke-linecap="round" fill="none"/></svg></div>
+          <svg width="26" height="26" viewBox="0 0 26 26">
+            <circle cx="13" cy="13" r="5.5" fill="#e8a430"/>
+            <path d="M13 3v3M13 20v3M3 13h3M20 13h3M6.5 6.5l2 2M17.5 17.5l2 2M6.5 19.5l2-2M17.5 8.5l2-2"
+                  stroke="#e8a430" stroke-width="1.7" stroke-linecap="round" opacity=".5"/>
+          </svg>
+          <span>Light</span>
+        </div>
+        <div class="tcard tcard-d on" id="td" onclick="setTheme('dark')">
+          <div class="ck"><svg width="9" height="9" viewBox="0 0 12 12"><path d="M2 6L5 9L10 3" stroke="#111" stroke-width="2" stroke-linecap="round" fill="none"/></svg></div>
+          <svg width="26" height="26" viewBox="0 0 26 26">
+            <path d="M18 13a7 7 0 01-8 6.9A7 7 0 1118 13z" fill="#b8b8d0" opacity=".85"/>
+          </svg>
+          <span>Dark</span>
+        </div>
+      </div>
+      <div class="csect">
+        <span class="clabel">Accent Color</span>
+        <div class="cwrap" id="cwrap">
+          <div class="cwheel" id="cwheel"></div>
+          <div class="cinner"><div class="cprev" id="cprev"></div></div>
+          <div class="cthumb" id="cthumb"></div>
+        </div>
+      </div>
+    </div>
+    <div class="btns">
+      <button class="sec" onclick="go(0,'b')">Back</button>
+      <button class="pri" onclick="go(2)">Continue</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       SCREEN 2 — IMPORT
+  ═══════════════════════════════════ -->
+  <div class="screen" id="s2">
+    <h1>Import your data</h1>
+    <p class="sub">Bring bookmarks, passwords, and history from another browser.</p>
+    <div class="content">
+      <div class="ilist">
+        <div class="iitem" onclick="this.classList.toggle('on')">
+          <svg class="ico" viewBox="0 0 25 25"><circle cx="12.5" cy="12.5" r="11" fill="#4285F4"/><circle cx="12.5" cy="12.5" r="4.5" fill="#fff"/><path d="M12.5 1.5a11 11 0 0111 11H18a5.5 5.5 0 00-5.5-5.5z" fill="#EA4335"/><path d="M1.5 12.5a11 11 0 019.2-10.8l1.4 5.4A5.5 5.5 0 007 12.5z" fill="#FBBC05"/><path d="M12.5 23.5a11 11 0 01-9.3-5.1l4.7-2.9a5.5 5.5 0 009 .5z" fill="#34A853"/></svg>
+          <span class="iname">Google Chrome</span>
+          <div class="ichk"><svg width="8" height="8" viewBox="0 0 12 12"><path d="M2 6L5 9L10 3" stroke="#0b0820" stroke-width="2.2" stroke-linecap="round" fill="none"/></svg></div>
+        </div>
+        <div class="iitem" onclick="this.classList.toggle('on')">
+          <svg class="ico" viewBox="0 0 25 25"><circle cx="12.5" cy="12.5" r="11" fill="#FF7139"/><circle cx="12.5" cy="12.5" r="4" fill="#FFBD4F" opacity=".95"/></svg>
+          <span class="iname">Mozilla Firefox</span>
+          <div class="ichk"><svg width="8" height="8" viewBox="0 0 12 12"><path d="M2 6L5 9L10 3" stroke="#0b0820" stroke-width="2.2" stroke-linecap="round" fill="none"/></svg></div>
+        </div>
+        <div class="iitem" onclick="this.classList.toggle('on')">
+          <svg class="ico" viewBox="0 0 25 25"><circle cx="12.5" cy="12.5" r="11" fill="#0078D4"/><rect x="7" y="7" width="11" height="11" rx="1.5" fill="#50E6FF"/></svg>
+          <span class="iname">Microsoft Edge</span>
+          <div class="ichk"><svg width="8" height="8" viewBox="0 0 12 12"><path d="M2 6L5 9L10 3" stroke="#0b0820" stroke-width="2.2" stroke-linecap="round" fill="none"/></svg></div>
+        </div>
+        <div class="iitem" onclick="this.classList.toggle('on')">
+          <svg class="ico" viewBox="0 0 25 25"><circle cx="12.5" cy="12.5" r="11" fill="#006CFF"/><circle cx="12.5" cy="12.5" r="3.8" fill="#fff" opacity=".9"/></svg>
+          <span class="iname">Safari</span>
+          <div class="ichk"><svg width="8" height="8" viewBox="0 0 12 12"><path d="M2 6L5 9L10 3" stroke="#0b0820" stroke-width="2.2" stroke-linecap="round" fill="none"/></svg></div>
+        </div>
+      </div>
+    </div>
+    <div class="btns">
+      <button class="sec" onclick="go(1,'b')">Back</button>
+      <button class="pri" onclick="go(3)">Continue</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       SCREEN 3 — SEARCH ENGINE
+  ═══════════════════════════════════ -->
+  <div class="screen" id="s3">
+    <h1>Your default search engine</h1>
+    <p class="sub">Pick which search engine to use in the address bar.</p>
+    <div class="content">
+      <div class="scards">
+        <div class="scard on" onclick="pickS(this)">
+          <div class="ck"><svg width="8" height="8" viewBox="0 0 12 12"><path d="M2 6L5 9L10 3" stroke="#111" stroke-width="2" stroke-linecap="round" fill="none"/></svg></div>
+          <svg class="sico" viewBox="0 0 48 48">
+            <path d="M44 24.3c0-1.6-.1-3.1-.4-4.6H24v9.1h11.3c-.5 2.6-2 4.8-4.2 6.3v5h6.7C41.7 36.4 44 30.9 44 24.3z" fill="#4285F4"/>
+            <path d="M24 44c5.6 0 10.3-1.9 13.8-5l-6.7-5c-1.9 1.2-4.3 2-7.1 2-5.4 0-10-3.7-11.7-8.6H5.4v5.2C8.9 39.9 16 44 24 44z" fill="#34A853"/>
+            <path d="M12.3 27.4c-.8-2.6-.8-5.3 0-7.9V14.3H5.4c-2.8 5.5-2.8 12 0 17.5l6.9-4.4z" fill="#FBBC05"/>
+            <path d="M24 10c3 0 5.7 1 7.8 3l5.8-5.8C33.9 4 29.2 2 24 2 16 2 8.9 6.1 5.4 12.8l6.9 5.2C14 13.7 18.6 10 24 10z" fill="#EA4335"/>
+          </svg>
+          <span class="sname">Google</span>
+        </div>
+        <div class="scard" onclick="pickS(this)">
+          <div class="ck"><svg width="8" height="8" viewBox="0 0 12 12"><path d="M2 6L5 9L10 3" stroke="#111" stroke-width="2" stroke-linecap="round" fill="none"/></svg></div>
+          <svg class="sico" viewBox="0 0 48 48">
+            <circle cx="24" cy="24" r="22" fill="#DE5833"/>
+            <ellipse cx="24" cy="26" rx="10" ry="12" fill="#fff"/>
+            <ellipse cx="20" cy="22" rx="2.4" ry="3.4" fill="#2D4F8E"/>
+            <ellipse cx="28" cy="22" rx="2.4" ry="3.4" fill="#2D4F8E"/>
+            <ellipse cx="21" cy="21" rx="1.1" ry="1.7" fill="#fff"/>
+            <ellipse cx="29" cy="21" rx="1.1" ry="1.7" fill="#fff"/>
+            <path d="M19 30q5 2.5 10 0" stroke="#DE5833" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+          </svg>
+          <span class="sname">DuckDuckGo</span>
+        </div>
+        <div class="scard" onclick="pickS(this)">
+          <div class="ck"><svg width="8" height="8" viewBox="0 0 12 12"><path d="M2 6L5 9L10 3" stroke="#111" stroke-width="2" stroke-linecap="round" fill="none"/></svg></div>
+          <svg class="sico" viewBox="0 0 48 48">
+            <circle cx="24" cy="24" r="22" fill="#36A93F"/>
+            <path d="M24 11c-1 0-3 9-3 15s1.5 10 3 10 3-4 3-10-2-15-3-15z" fill="#fff" opacity=".88"/>
+            <path d="M15 22c0-1 6.5-4.5 12.5-1.5S35 27 35 28s-5.5-1-11.5-2S15 23 15 22z" fill="#fff" opacity=".6"/>
+          </svg>
+          <span class="sname">Ecosia</span>
+        </div>
+      </div>
+    </div>
+    <div class="btns">
+      <button class="sec" onclick="go(2,'b')">Back</button>
+      <button class="pri" onclick="go(4)">Continue</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       SCREEN 4 — ESSENTIALS
+  ═══════════════════════════════════ -->
+  <div class="screen" id="s4">
+    <h1>Your Essentials</h1>
+    <p class="sub">Pin web apps to your sidebar for quick access.</p>
+    <div class="content">
+      <div class="egrid">
+        <div class="eitem on" onclick="this.classList.toggle('on')">
+          <div class="mck"><svg width="6" height="6" viewBox="0 0 12 12"><path d="M2 6L5 9L10 3" stroke="#0b0820" stroke-width="2.5" stroke-linecap="round" fill="none"/></svg></div>
+          <svg class="eico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="rgba(255,255,255,.1)"/><text x="12" y="17" text-anchor="middle" font-size="13" fill="rgba(255,255,255,.85)" font-weight="700" font-family="serif">W</text></svg>
+          <span class="ename">Wikipedia</span>
+        </div>
+        <div class="eitem" onclick="this.classList.toggle('on')">
+          <div class="mck"><svg width="6" height="6" viewBox="0 0 12 12"><path d="M2 6L5 9L10 3" stroke="#0b0820" stroke-width="2.5" stroke-linecap="round" fill="none"/></svg></div>
+          <svg class="eico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="rgba(29,161,242,.15)"/><text x="12" y="17" text-anchor="middle" font-size="11" fill="#1DA1F2" font-weight="700">𝕏</text></svg>
+          <span class="ename">X / Twitter</span>
+        </div>
+        <div class="eitem on" onclick="this.classList.toggle('on')">
+          <div class="mck"><svg width="6" height="6" viewBox="0 0 12 12"><path d="M2 6L5 9L10 3" stroke="#0b0820" stroke-width="2.5" stroke-linecap="round" fill="none"/></svg></div>
+          <svg class="eico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="rgba(255,0,0,.1)"/><polygon points="9.5,7 18,12 9.5,17" fill="#f00"/></svg>
+          <span class="ename">YouTube</span>
+        </div>
+        <div class="eitem" onclick="this.classList.toggle('on')">
+          <div class="mck"><svg width="6" height="6" viewBox="0 0 12 12"><path d="M2 6L5 9L10 3" stroke="#0b0820" stroke-width="2.5" stroke-linecap="round" fill="none"/></svg></div>
+          <svg class="eico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="rgba(66,133,244,.12)"/><rect x="5.5" y="5.5" width="13" height="13" rx="2" fill="none" stroke="#4285F4" stroke-width="1.3"/><path d="M5.5 10h13M10 5.5v13" stroke="#4285F4" stroke-width="1.1"/></svg>
+          <span class="ename">Calendar</span>
+        </div>
+        <div class="eitem on" onclick="this.classList.toggle('on')">
+          <div class="mck"><svg width="6" height="6" viewBox="0 0 12 12"><path d="M2 6L5 9L10 3" stroke="#0b0820" stroke-width="2.5" stroke-linecap="round" fill="none"/></svg></div>
+          <svg class="eico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="rgba(66,133,244,.12)"/><path d="M6 16l6-10 6 10" stroke="#4285F4" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>
+          <span class="ename">Translate</span>
+        </div>
+        <div class="eitem" onclick="this.classList.toggle('on')">
+          <div class="mck"><svg width="6" height="6" viewBox="0 0 12 12"><path d="M2 6L5 9L10 3" stroke="#0b0820" stroke-width="2.5" stroke-linecap="round" fill="none"/></svg></div>
+          <svg class="eico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="rgba(228,67,50,.1)"/><circle cx="12" cy="12" r="3.5" fill="none" stroke="#E44332" stroke-width="1.8"/><path d="M12 8.5v7M8.5 12h7" stroke="#E44332" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <span class="ename">Todoist</span>
+        </div>
+      </div>
+    </div>
+    <div class="btns">
+      <button class="sec" onclick="go(3,'b')">Back</button>
+      <button class="pri" onclick="go(5)">Finish Setup</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       SCREEN 5 — DONE
+  ═══════════════════════════════════ -->
+  <div class="screen" id="s5">
+    <div class="done-ico">
+      <svg viewBox="0 0 74 74" fill="none">
+        <circle cx="37" cy="37" r="35" fill="rgba(170,199,255,.1)"/>
+        <circle cx="37" cy="37" r="25" fill="rgba(170,199,255,.18)"/>
+        <path d="M23 37l11 11L51 26" stroke="var(--accent)" stroke-width="3.5"
+              stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="welcome-title" style="font-size:38px;margin-bottom:12px;">You're all set!</div>
+    <p class="sub" style="opacity:1;transform:none;">Zen is ready. Enjoy a calmer internet.</p>
+    <button class="arrow-btn" onclick="finish()" style="margin-top:32px;">
+      <svg viewBox="0 0 24 24" fill="none">
+        <path d="M5 12h14M13 6l6 6-6 6" stroke="#1a1a1a" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Progress dots -->
+  <div class="dots" id="dots">
+    <div class="dot on"></div><div class="dot"></div><div class="dot"></div>
+    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+  </div>
+</div>
+
+<div class="cw" id="cw"></div>
+
+<script>
+let cur=0, busy=false;
+
+function go(to, dir){
+  if(busy) return;
+  busy=true;
+  const old=document.getElementById('s'+cur);
+  const nw=document.getElementById('s'+to);
+  old.classList.remove('active');
+  old.classList.add(dir==='b'?'out-bck':'out-fwd');
+  setTimeout(()=>{
+    old.classList.remove('out-fwd','out-bck');
+    nw.classList.add('active');
+    cur=to;
+    // update dots
+    document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('on',i===cur));
+    if(to>0) document.getElementById('dots').classList.add('show');
+    if(to===5) setTimeout(confetti,300);
+    setTimeout(()=>busy=false,400);
+  },210);
+}
+
+// Theme
+function setTheme(t){
+  document.getElementById('tl').classList.toggle('on',t==='light');
+  document.getElementById('td').classList.toggle('on',t==='dark');
+  // adjust glass tint color in body for light/dark
+  if(t==='light'){
+    document.documentElement.style.setProperty('--text','rgba(20,20,36,0.92)');
+    document.documentElement.style.setProperty('--text2','rgba(20,20,36,0.55)');
+    document.documentElement.style.setProperty('--text3','rgba(20,20,36,0.28)');
+    document.documentElement.style.setProperty('--border','rgba(0,0,0,0.10)');
+    document.documentElement.style.setProperty('--card-bg','rgba(0,0,0,0.04)');
+    document.documentElement.style.setProperty('--card-bg-h','rgba(0,0,0,0.07)');
+    document.querySelector('.cinner').style.background='rgba(240,238,248,0.92)';
+    document.querySelector('.app').style.boxShadow='inset 0 0 0 1px rgba(0,0,0,0.07)';
+  } else {
+    document.documentElement.style.setProperty('--text','rgba(255,255,255,0.92)');
+    document.documentElement.style.setProperty('--text2','rgba(255,255,255,0.52)');
+    document.documentElement.style.setProperty('--text3','rgba(255,255,255,0.28)');
+    document.documentElement.style.setProperty('--border','rgba(255,255,255,0.10)');
+    document.documentElement.style.setProperty('--card-bg','rgba(255,255,255,0.06)');
+    document.documentElement.style.setProperty('--card-bg-h','rgba(255,255,255,0.10)');
+    document.querySelector('.cinner').style.background='rgba(15,8,32,0.92)';
+    document.querySelector('.app').style.boxShadow='inset 0 0 0 1px rgba(255,255,255,0.08)';
+  }
+}
+
+// Color wheel
+const cwrap=document.getElementById('cwrap');
+const cthumb=document.getElementById('cthumb');
+const cprev=document.getElementById('cprev');
+let hue=220, dragging=false;
+
+function applyHue(h){
+  hue=h;
+  const c=`hsl(${h},68%,72%)`;
+  document.documentElement.style.setProperty('--accent',c);
+  document.documentElement.style.setProperty('--accent-h',`hsl(${h},72%,82%)`);
+  document.documentElement.style.setProperty('--card-on',`hsla(${h},68%,72%,.14)`);
+  cprev.style.background=c;
+  cprev.style.boxShadow=`0 0 16px hsla(${h},68%,72%,.22)`;
+  document.getElementById('glow').style.setProperty('--glow-c',`hsla(${h},68%,72%,.07)`);
+  thumbPos(h);
+}
+
+function thumbPos(h){
+  const r=60, ang=(h-90)*Math.PI/180;
+  const x=82+r*Math.cos(ang), y=82+r*Math.sin(ang);
+  cthumb.style.left=(x-7.5)+'px';
+  cthumb.style.top=(y-7.5)+'px';
+}
+
+function wheelEvt(e){
+  const rc=cwrap.getBoundingClientRect();
+  const cx=(e.clientX||e.touches[0].clientX)-rc.left-82;
+  const cy=(e.clientY||e.touches[0].clientY)-rc.top-82;
+  const dist=Math.sqrt(cx*cx+cy*cy);
+  if(dist>26 && dist<88){
+    let a=Math.atan2(cy,cx)*180/Math.PI+90;
+    if(a<0) a+=360;
+    applyHue(a);
+  }
+}
+cwrap.addEventListener('mousedown',e=>{dragging=true;wheelEvt(e);});
+document.addEventListener('mousemove',e=>{if(dragging)wheelEvt(e);});
+document.addEventListener('mouseup',()=>dragging=false);
+cwrap.addEventListener('touchstart',e=>{dragging=true;wheelEvt(e);e.preventDefault();},{passive:false});
+document.addEventListener('touchmove',e=>{if(dragging)wheelEvt(e);},{passive:false});
+document.addEventListener('touchend',()=>dragging=false);
+applyHue(220);
+
+// Search
+function pickS(el){
+  document.querySelectorAll('.scard').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+}
+
+// Confetti
+function confetti(){
+  const w=document.getElementById('cw');
+  const cols=['var(--accent)','#ff6b6b','#ffd93d','#6bffb8','#c084fc','#74d0f1','#ff8fab'];
+  for(let i=0;i<60;i++){
+    const c=document.createElement('div');
+    c.className='cf';
+    c.style.cssText=`left:${Math.random()*100}%;background:${cols[i%cols.length]};
+      animation-delay:${Math.random()*.65}s;animation-duration:${2.2+Math.random()*1.4}s;
+      width:${4+Math.random()*5}px;height:${4+Math.random()*5}px;
+      border-radius:${Math.random()>.5?'50%':'2px'}`;
+    w.appendChild(c);
+  }
+  setTimeout(()=>w.innerHTML='',4000);
+}
+
+// Finish
+function finish(){
+  const app=document.querySelector('.app');
+  app.style.transition='opacity .65s, transform .65s';
+  app.style.opacity='0'; app.style.transform='scale(.96)';
+  setTimeout(()=>window.close(), 700);
+}
+
+// Keyboard
+document.addEventListener('keydown',e=>{
+  if((e.key==='ArrowRight'||e.key==='Enter')&&!e.target.matches('button'))
+    cur<5?go(cur+1):finish();
+  if(e.key==='ArrowLeft'&&cur>0) go(cur-1,'b');
+});
+</script>
+</body>
+</html>
