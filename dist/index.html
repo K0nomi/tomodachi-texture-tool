@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tomodachi Texture Tool</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;1,400&family=Inter:wght@300;400;500;600&display=swap');
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --accent:   #aac7ff;
+  --accent-h: #c8dbff;
+  --text:     rgba(255,255,255,0.92);
+  --text2:    rgba(255,255,255,0.52);
+  --text3:    rgba(255,255,255,0.28);
+  --border:   rgba(255,255,255,0.10);
+  --card:     rgba(255,255,255,0.06);
+  --card-h:   rgba(255,255,255,0.10);
+  --card-on:  rgba(170,199,255,0.14);
+  --ok:       #6bffb8;
+}
+
+html, body {
+  width:100%; height:100%; overflow:hidden;
+  background:transparent;
+  color:var(--text);
+  font-family:'Inter',-apple-system,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  user-select:none;
+}
+body { -webkit-app-region:drag; }
+button,input,a,.type-card,.ofile { -webkit-app-region:no-drag; }
+
+.app {
+  width:100%; height:100%;
+  display:flex; flex-direction:column;
+  position:relative; overflow:hidden;
+  border-radius:14px;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,0.08);
+}
+
+/* ── Window controls ── */
+.win-controls {
+  position:fixed; top:13px; right:16px;
+  display:flex; gap:8px; z-index:9999;
+}
+.wbtn {
+  width:13px; height:13px; border-radius:50%;
+  border:none; cursor:pointer;
+  opacity:0.7; transition:opacity .2s, transform .15s;
+}
+.wbtn:hover { opacity:1; transform:scale(1.15); }
+.wbtn-close { background:#ff5f57; }
+.wbtn-min   { background:#ffbd2e; }
+
+/* ── Screens ── */
+.screen {
+  position:absolute; inset:0;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  padding:48px 52px;
+  opacity:0; transform:translateY(22px) scale(.975);
+  transition:opacity .38s cubic-bezier(.4,0,.2,1),
+             transform .38s cubic-bezier(.4,0,.2,1);
+  pointer-events:none; z-index:1;
+}
+.screen.active  { opacity:1; transform:none; pointer-events:all; z-index:10; }
+.screen.out-fwd { opacity:0; transform:translateY(-26px) scale(.975); }
+.screen.out-bck { opacity:0; transform:translateY(26px) scale(.975); }
+
+/* ── Typography ── */
+.welcome-title {
+  font-family:'Lora',serif;
+  font-size:42px; font-weight:400;
+  letter-spacing:-.5px; line-height:1.22;
+  text-align:center; color:rgba(255,255,255,.90);
+  margin-bottom:8px;
+  opacity:0; transform:translateY(20px);
+  transition:opacity .65s cubic-bezier(.4,0,.2,1),
+             transform .65s cubic-bezier(.4,0,.2,1);
+}
+.screen.active .welcome-title { opacity:1; transform:none; transition-delay:.1s; }
+
+.welcome-sub {
+  font-size:13px; color:var(--text3);
+  text-align:center; letter-spacing:.3px;
+  margin-bottom:52px;
+  opacity:0; transform:translateY(14px);
+  transition:opacity .55s cubic-bezier(.4,0,.2,1) .18s,
+             transform .55s cubic-bezier(.4,0,.2,1) .18s;
+}
+.screen.active .welcome-sub { opacity:1; transform:none; }
+
+h1 {
+  font-family:'Lora',serif;
+  font-size:28px; font-weight:500;
+  letter-spacing:-.3px; margin-bottom:6px;
+  opacity:0; transform:translateY(14px);
+  transition:opacity .5s cubic-bezier(.4,0,.2,1),
+             transform .5s cubic-bezier(.4,0,.2,1);
+}
+.screen.active h1 { opacity:1; transform:none; transition-delay:.08s; }
+
+.sub {
+  font-size:13.5px; color:var(--text2); text-align:center;
+  max-width:480px; line-height:1.5; margin-bottom:26px;
+  opacity:0; transform:translateY(10px);
+  transition:opacity .5s cubic-bezier(.4,0,.2,1) .16s,
+             transform .5s cubic-bezier(.4,0,.2,1) .16s;
+}
+.screen.active .sub { opacity:1; transform:none; }
+
+/* ── Buttons ── */
+.arrow-btn {
+  background:rgba(255,255,255,.88); color:#1a1a1a;
+  border:none; width:120px; height:44px; border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer;
+  opacity:0; transform:translateY(14px);
+  transition:opacity .5s cubic-bezier(.4,0,.2,1) .28s,
+             transform .5s cubic-bezier(.4,0,.2,1) .28s,
+             background .2s, box-shadow .2s;
+}
+.screen.active .arrow-btn { opacity:1; transform:none; }
+.arrow-btn:hover { background:#fff; box-shadow:0 4px 24px rgba(0,0,0,.3); transform:translateY(-1px) !important; }
+.arrow-btn:active { transform:scale(.97) !important; }
+.arrow-btn svg { width:20px; height:20px; }
+
+.pri {
+  background:rgba(255,255,255,.90); color:#111;
+  border:none; padding:10px 28px;
+  border-radius:10px; font-size:13.5px; font-weight:600;
+  font-family:'Inter',sans-serif; cursor:pointer;
+  opacity:0; transform:translateY(12px);
+  transition:opacity .4s cubic-bezier(.4,0,.2,1) .36s,
+             transform .4s cubic-bezier(.4,0,.2,1) .36s,
+             background .2s, box-shadow .2s;
+}
+.screen.active .pri { opacity:1; transform:none; }
+.pri:hover { background:#fff; box-shadow:0 4px 20px rgba(0,0,0,.25); transform:translateY(-1px) !important; }
+.pri:active { transform:scale(.97) !important; }
+.pri:disabled { opacity:.35 !important; cursor:not-allowed; transform:none !important; box-shadow:none !important; }
+
+.sec {
+  background:transparent; color:var(--text2);
+  border:none; padding:10px 18px;
+  border-radius:10px; font-size:13px; font-weight:500;
+  font-family:'Inter',sans-serif; cursor:pointer;
+  opacity:0; transform:translateY(12px);
+  transition:opacity .4s cubic-bezier(.4,0,.2,1) .4s,
+             transform .4s cubic-bezier(.4,0,.2,1) .4s,
+             background .2s, color .2s;
+}
+.screen.active .sec { opacity:1; transform:none; }
+.sec:hover { color:var(--text); background:rgba(255,255,255,.07); }
+
+.btns { display:flex; gap:10px; align-items:center; margin-top:8px; }
+
+/* ── Content fade-in ── */
+.content {
+  opacity:0; transform:translateY(12px);
+  transition:opacity .45s cubic-bezier(.4,0,.2,1) .22s,
+             transform .45s cubic-bezier(.4,0,.2,1) .22s;
+  width:100%; display:flex; flex-direction:column; align-items:center;
+}
+.screen.active .content { opacity:1; transform:none; }
+
+/* ════════════════════════════════════════════
+   SCREEN 1 — UGC Folder
+════════════════════════════════════════════ */
+.folder-pick-zone {
+  width:100%; max-width:480px;
+  display:flex; flex-direction:column; gap:10px;
+  margin-bottom:20px;
+}
+.folder-big-btn {
+  width:100%; height:90px;
+  border:1.5px dashed var(--border); border-radius:14px;
+  background:var(--card); cursor:pointer;
+  display:flex; align-items:center; justify-content:center; gap:14px;
+  transition:border-color .22s, background .22s;
+  -webkit-app-region:no-drag;
+}
+.folder-big-btn:hover { border-color:rgba(255,255,255,.22); background:var(--card-h); }
+.folder-big-btn-icon { font-size:26px; opacity:.55; }
+.folder-big-btn-text { font-size:13.5px; color:var(--text2); }
+
+.folder-chosen {
+  display:none; align-items:center; gap:12px;
+  width:100%; max-width:480px; margin-bottom:4px;
+  padding:12px 16px; border-radius:12px;
+  background:var(--card); border:1.5px solid var(--border);
+}
+.folder-chosen.show { display:flex; }
+.folder-chosen-icon { font-size:20px; flex-shrink:0; opacity:.7; }
+.folder-chosen-path {
+  font-size:12px; color:var(--text2); min-width:0; flex:1;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.folder-chosen-path.has-path { color:var(--text); }
+.folder-change-btn {
+  flex-shrink:0; background:transparent; color:var(--accent);
+  border:1.5px solid rgba(170,199,255,.25); padding:5px 12px;
+  border-radius:8px; font-size:11.5px; font-weight:500;
+  font-family:'Inter',sans-serif; cursor:pointer; transition:all .2s;
+  -webkit-app-region:no-drag;
+}
+.folder-change-btn:hover { background:var(--card-on); border-color:var(--accent); }
+.emu-suggestions {
+  width:100%; max-width:480px; display:flex; flex-direction:column; gap:8px;
+  margin-bottom:14px;
+}
+.emu-card {
+  display:flex; align-items:center; gap:12px;
+  padding:11px 14px; border-radius:12px;
+  background:var(--card); border:1.5px solid var(--border);
+  transition:all .2s;
+}
+.emu-card:hover { border-color:rgba(255,255,255,.18); background:var(--card-h); }
+.emu-icon-img { width:32px; height:32px; object-fit:contain; flex-shrink:0; border-radius:6px; }
+.emu-info { flex:1; min-width:0; }
+.emu-name { font-size:13px; font-weight:600; color:var(--text); }
+.emu-path { font-size:10.5px; color:var(--text3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; }
+.emu-use-btn {
+  flex-shrink:0; background:var(--accent); color:#111;
+  border:none; padding:6px 14px; border-radius:8px;
+  font-size:12px; font-weight:600; font-family:'Inter',sans-serif;
+  cursor:pointer; transition:all .2s; -webkit-app-region:no-drag;
+}
+.emu-use-btn:hover { background:var(--accent-h); box-shadow:0 2px 12px rgba(170,199,255,.3); }
+.emu-divider {
+  display:flex; align-items:center; gap:10px;
+  font-size:11px; color:var(--text3); margin-bottom:10px;
+  width:100%; max-width:480px;
+}
+.emu-divider::before,.emu-divider::after {
+  content:''; flex:1; height:1px; background:var(--border);
+}
+.slots-empty {
+  font-size:13px; color:var(--text3); text-align:center;
+  padding:40px 20px; line-height:1.7; max-width:400px; margin:0 auto;
+}
+
+/* ════════════════════════════════════════════
+   SCREEN 2 — PNG picker
+════════════════════════════════════════════ */
+.drop-zone {
+  width:100%; max-width:480px; height:160px;
+  border:1.5px dashed var(--border);
+  border-radius:14px;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:10px;
+  cursor:pointer; margin-bottom:16px;
+  background:var(--card);
+  transition:border-color .22s, background .22s;
+  -webkit-app-region:no-drag;
+}
+.drop-zone:hover  { border-color:rgba(255,255,255,.22); background:var(--card-h); }
+.drop-zone.drag-over { border-color:var(--accent); background:var(--card-on); transform:scale(1.01); }
+.dz-icon { font-size:30px; opacity:.4; }
+.dz-text { font-size:13px; color:var(--text2); }
+.dz-hint { font-size:11px; color:var(--text3); }
+
+.file-preview {
+  display:none; flex-direction:row; align-items:center; gap:14px;
+  width:100%; max-width:480px; margin-bottom:16px;
+  padding:14px 18px; border-radius:12px;
+  background:var(--card); border:1.5px solid var(--border);
+}
+.file-preview.show { display:flex; }
+.file-thumb {
+  width:72px; height:72px; border-radius:8px;
+  object-fit:cover; background:#111; flex-shrink:0;
+}
+.file-meta { display:flex; flex-direction:column; gap:4px; min-width:0; }
+.file-name { font-size:13.5px; font-weight:500;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.file-dim  { font-size:11.5px; color:var(--text2); }
+
+/* ════════════════════════════════════════════
+   SCREEN 3 — Item type
+════════════════════════════════════════════ */
+.type-grid {
+  display:grid; grid-template-columns:repeat(4,1fr); gap:10px;
+  width:100%; max-width:620px; margin-bottom:22px;
+}
+.type-card {
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:7px;
+  padding:16px 8px 12px; border-radius:12px;
+  border:1.5px solid var(--border);
+  background:var(--card); cursor:pointer; position:relative;
+  transition:all .22s cubic-bezier(.4,0,.2,1);
+}
+.type-card:hover { border-color:rgba(255,255,255,.2); background:var(--card-h); transform:translateY(-2px); }
+.type-card.on    { border-color:var(--accent); background:var(--card-on); }
+.type-icon  { font-size:26px; line-height:1; }
+.type-label { font-size:11px; font-weight:500; color:var(--text2); text-align:center; }
+.type-card.on .type-label { color:var(--text); }
+.type-ck {
+  position:absolute; top:6px; right:6px;
+  width:15px; height:15px; border-radius:50%;
+  background:var(--accent);
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; transform:scale(0);
+  transition:all .35s cubic-bezier(.34,1.56,.64,1);
+}
+.type-card.on .type-ck { opacity:1; transform:scale(1); }
+
+/* ════════════════════════════════════════════
+   SCREEN 4 — Slot picker
+════════════════════════════════════════════ */
+.slots-loading {
+  font-size:13px; color:var(--text2);
+  padding:50px 0; text-align:center; width:100%;
+}
+.slots-grid {
+  width:100%; max-width:560px; max-height:270px;
+  overflow-y:auto; overflow-x:hidden;
+  display:grid; grid-template-columns:repeat(5,1fr); gap:10px;
+  margin-bottom:16px; padding-right:2px;
+}
+.slots-grid::-webkit-scrollbar { width:4px; }
+.slots-grid::-webkit-scrollbar-track { background:transparent; }
+.slots-grid::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+.slot-card {
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:5px;
+  padding:10px 6px 8px; border-radius:10px;
+  border:1.5px solid var(--border); background:var(--card);
+  cursor:pointer; transition:all .2s cubic-bezier(.4,0,.2,1);
+  -webkit-app-region:no-drag;
+}
+.slot-card:hover { border-color:rgba(255,255,255,.22); background:var(--card-h); transform:translateY(-2px); }
+.slot-card.on { border-color:var(--accent); background:var(--card-on); box-shadow:0 0 0 1px var(--accent); }
+.slot-thumb {
+  width:56px; height:56px; border-radius:6px;
+  object-fit:cover; image-rendering:pixelated;
+  background:rgba(255,255,255,.05);
+}
+.slot-empty { width:56px; height:56px; border-radius:6px;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(255,255,255,.04); font-size:22px; opacity:.35; }
+.slot-new .slot-empty { opacity:.7; color:var(--accent); background:var(--card-on); }
+.slot-label { font-size:10px; color:var(--text3); text-align:center; line-height:1.2; }
+.slot-card.on .slot-label { color:var(--text2); }
+.slot-warn {
+  position:absolute; top:5px; left:5px;
+  width:16px; height:16px; border-radius:50%;
+  background:#ffbd2e; display:flex; align-items:center; justify-content:center;
+  font-size:9px; font-weight:700; color:#1a1000;
+}
+
+/* ── Resize preview (screen 2) ─────────────── */
+.resize-preview {
+  display:none; align-items:center; gap:12px;
+  width:100%; max-width:480px;
+  padding:12px 16px; margin-top:4px; margin-bottom:4px;
+  background:var(--card); border:1.5px solid var(--border);
+  border-radius:12px;
+}
+.resize-preview.show { display:flex; }
+.resize-side { display:flex; flex-direction:column; align-items:center; gap:6px; }
+.resize-lbl  { font-size:10px; color:var(--text3); text-align:center; }
+.resize-box  {
+  width:72px; height:72px; border-radius:8px;
+  overflow:hidden; background:rgba(255,255,255,.05);
+  flex-shrink:0;
+}
+.resize-box img { width:100%; height:100%; display:block; }
+.resize-arrow  { font-size:16px; color:var(--text3); flex-shrink:0; }
+.resize-warn   { flex:1; font-size:11px; color:#ffbd2e; line-height:1.5; }
+.resize-ok     { flex:1; font-size:11px; color:var(--ok); line-height:1.5; }
+
+/* ── Before/after compare bar ──────────────── */
+.compare-bar {
+  display:none; align-items:center; gap:10px;
+  width:100%; max-width:560px;
+  padding:10px 14px; margin-bottom:10px;
+  background:var(--card); border:1.5px solid var(--border);
+  border-radius:12px;
+  opacity:0; transform:translateY(6px);
+  transition:opacity .25s, transform .25s;
+}
+.compare-bar.show { display:flex; opacity:1; transform:none; }
+.compare-img {
+  width:52px; height:52px; border-radius:8px;
+  object-fit:cover; image-rendering:pixelated;
+  background:rgba(255,255,255,.06); flex-shrink:0;
+}
+.compare-arrow { font-size:16px; color:var(--text3); flex-shrink:0; }
+.compare-side { display:flex; flex-direction:column; gap:3px; }
+.compare-lbl { font-size:10px; color:var(--text3); }
+.compare-name { font-size:11.5px; color:var(--text2); font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px; }
+
+/* ── Restore panel ──────────────────────────── */
+.restore-hint {
+  text-align:center; margin-top:10px;
+}
+.restore-hint-btn {
+  background:none; border:none; color:var(--text3);
+  font-size:11.5px; cursor:pointer; padding:4px 8px;
+  text-decoration:underline dotted; text-underline-offset:3px;
+  transition:color .2s; font-family:inherit;
+}
+.restore-hint-btn:hover { color:var(--text2); }
+
+.restore-overlay {
+  position:fixed; inset:0; z-index:1000;
+  background:rgba(0,0,0,.6); backdrop-filter:blur(8px);
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none; transition:opacity .2s;
+  border-radius:14px;
+}
+.restore-overlay.open { opacity:1; pointer-events:auto; }
+
+.restore-panel {
+  background:rgba(18,10,36,.96); border:1px solid rgba(255,255,255,.12);
+  border-radius:14px; padding:22px 22px 18px; width:490px; max-width:92%;
+  display:flex; flex-direction:column; gap:14px;
+  box-shadow:0 12px 48px rgba(0,0,0,.55);
+}
+.restore-panel-head {
+  display:flex; align-items:center; justify-content:space-between;
+}
+.restore-panel-head span { font-size:14px; font-weight:600; color:var(--text); }
+.restore-close-btn {
+  background:none; border:none; color:var(--text3); font-size:15px;
+  cursor:pointer; line-height:1; padding:2px 4px; transition:color .15s;
+}
+.restore-close-btn:hover { color:var(--text); }
+
+.restore-list {
+  display:flex; flex-direction:column; gap:7px;
+  max-height:270px; overflow-y:auto; padding-right:2px;
+}
+.restore-list::-webkit-scrollbar { width:4px; }
+.restore-list::-webkit-scrollbar-track { background:transparent; }
+.restore-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+.restore-item {
+  display:flex; align-items:center; gap:12px;
+  padding:11px 14px; border-radius:10px;
+  background:var(--card); border:1.5px solid var(--border);
+  transition:all .15s;
+}
+.restore-item:hover { border-color:rgba(255,255,255,.18); background:var(--card-h); }
+.restore-item-info { flex:1; min-width:0; }
+.restore-item-label { font-size:13px; font-weight:500; color:var(--text); }
+.restore-item-path {
+  font-size:10px; color:var(--text3); margin-top:2px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.restore-item-btn {
+  flex-shrink:0; background:rgba(255,90,90,.12);
+  border:1px solid rgba(255,90,90,.28); color:#ff9a9a;
+  border-radius:8px; padding:6px 13px; font-size:12px; font-weight:500;
+  cursor:pointer; transition:all .15s; font-family:inherit;
+}
+.restore-item-btn:hover { background:rgba(255,90,90,.22); border-color:rgba(255,90,90,.5); }
+.restore-empty {
+  font-size:13px; color:var(--text3); text-align:center;
+  padding:32px 16px; line-height:1.7;
+}
+.restore-panel-foot { display:flex; justify-content:flex-end; }
+.restore-working {
+  font-size:13px; color:var(--text2); text-align:center; padding:28px;
+}
+
+/* ════════════════════════════════════════════
+   SCREEN 5 — Processing
+════════════════════════════════════════════ */
+.progress-wrap { width:100%; max-width:420px; margin-bottom:16px; }
+.progress-track {
+  width:100%; height:4px; background:rgba(255,255,255,.10);
+  border-radius:2px; overflow:hidden;
+}
+.progress-bar {
+  height:100%; width:0%;
+  background:linear-gradient(90deg,var(--accent),var(--accent-h));
+  border-radius:2px;
+  transition:width .4s cubic-bezier(.4,0,.2,1);
+  box-shadow:0 0 12px rgba(170,199,255,.4);
+}
+.step-text { font-size:13px; color:var(--text2); margin-top:12px; text-align:center; }
+.spinner {
+  width:44px; height:44px; border-radius:50%;
+  border:3px solid rgba(255,255,255,.1);
+  border-top-color:var(--accent);
+  animation:spin .9s linear infinite; margin-bottom:20px;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ════════════════════════════════════════════
+   SCREEN 6 — Done
+════════════════════════════════════════════ */
+.done-icon {
+  width:64px; height:64px; margin-bottom:18px;
+  opacity:0; transform:scale(0);
+  transition:all .55s cubic-bezier(.34,1.56,.64,1);
+}
+.screen.active .done-icon { opacity:1; transform:scale(1); transition-delay:.1s; }
+.output-list {
+  width:100%; max-width:500px;
+  display:flex; flex-direction:column; gap:8px; margin-bottom:22px;
+}
+.ofile {
+  display:flex; align-items:center; gap:12px;
+  padding:11px 16px; border-radius:10px;
+  background:var(--card); border:1.5px solid var(--border);
+  opacity:0; transform:translateY(10px);
+  transition:opacity .45s cubic-bezier(.4,0,.2,1),
+             transform .45s cubic-bezier(.4,0,.2,1);
+}
+.screen.active .ofile:nth-child(1) { opacity:1; transform:none; transition-delay:.18s; }
+.screen.active .ofile:nth-child(2) { opacity:1; transform:none; transition-delay:.28s; }
+.screen.active .ofile:nth-child(3) { opacity:1; transform:none; transition-delay:.38s; }
+.ofile-icon { font-size:15px; flex-shrink:0; }
+.ofile-name { font-size:12.5px; font-weight:500; min-width:0;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ofile-tag  { margin-left:auto; font-size:10.5px; color:var(--ok);
+  background:rgba(107,255,184,.10); border:1px solid rgba(107,255,184,.2);
+  padding:2px 8px; border-radius:20px; flex-shrink:0; }
+
+/* ── Confetti ── */
+.cw { position:fixed; inset:0; pointer-events:none; z-index:9000; overflow:hidden; }
+.cf { position:absolute; border-radius:2px; top:-8px; animation:cf 2.6s ease-in forwards; }
+@keyframes cf {
+  0%   { transform:translateY(0) rotate(0deg) scale(1); opacity:1; }
+  100% { transform:translateY(100vh) rotate(640deg) scale(.3); opacity:0; }
+}
+
+/* ── Progress dots (7 screens: 0–6) ── */
+.dots {
+  position:fixed; bottom:22px; left:50%; transform:translateX(-50%);
+  display:flex; gap:7px; z-index:100;
+  opacity:0; transition:opacity .5s .2s;
+}
+.dots.show { opacity:1; }
+.dot { width:6px; height:6px; border-radius:50%; background:var(--text3);
+       transition:all .35s cubic-bezier(.4,0,.2,1); }
+.dot.on { background:var(--accent); width:20px; border-radius:3px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="win-controls">
+    <button class="wbtn wbtn-min"   onclick="tauriMinimize()" title="Minimize"></button>
+    <button class="wbtn wbtn-close" onclick="tauriClose()"    title="Close"></button>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SCREEN 0 — Welcome
+  ══════════════════════════════════════ -->
+  <div class="screen active" id="s0">
+    <div class="welcome-title">Welcome to<br>Tomodachi<br>Texture Tool</div>
+    <div class="welcome-sub">TTT · Custom texture converter</div>
+    <button class="arrow-btn" onclick="go(1)">
+      <svg viewBox="0 0 24 24" fill="none">
+        <path d="M5 12h14M13 6l6 6-6 6" stroke="#1a1a1a" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SCREEN 1 — UGC Folder
+  ══════════════════════════════════════ -->
+  <div class="screen" id="s1">
+    <h1>Game save folder</h1>
+    <p class="sub">Select your Tomodachi Life save folder. It should contain subfolders "0" and "1" — the program writes to both automatically.</p>
+    <div class="content">
+      <div class="emu-suggestions" id="emuSuggestions" style="display:none"></div>
+      <div class="emu-divider" id="emuDivider" style="display:none">or browse manually</div>
+      <div class="folder-pick-zone">
+        <div class="folder-big-btn" id="folderPickBtn" onclick="pickFolder()">
+          <div class="folder-big-btn-icon">📁</div>
+          <div class="folder-big-btn-text">Click to choose folder…</div>
+        </div>
+        <div class="folder-chosen" id="folderChosen">
+          <span class="folder-chosen-icon">📂</span>
+          <span class="folder-chosen-path" id="folderChosenPath"></span>
+          <button class="folder-change-btn" onclick="changeFolder()">Change</button>
+        </div>
+      </div>
+      <div class="btns">
+        <button class="sec" onclick="go(0,'b')">← Back</button>
+        <button class="pri" id="s1next" onclick="go(2)" disabled>Continue →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SCREEN 2 — PNG picker
+  ══════════════════════════════════════ -->
+  <div class="screen" id="s2">
+    <h1>Drop your texture</h1>
+    <p class="sub">Select the PNG image you want to convert into game-ready textures.</p>
+    <div class="content">
+      <div class="drop-zone" id="dropzone" onclick="pickPng()">
+        <div class="dz-icon">🖼</div>
+        <div class="dz-text">Click to browse…</div>
+        <div class="dz-hint">PNG, any size — will be auto-resized</div>
+      </div>
+      <div class="file-preview" id="filePreview">
+        <img class="file-thumb" id="fileThumb" src="" alt="preview">
+        <div class="file-meta">
+          <div class="file-name" id="fileName">—</div>
+          <div class="file-dim"  id="fileDim"></div>
+          <div style="margin-top:6px;font-size:11px;color:var(--text3)">Click below to change</div>
+        </div>
+      </div>
+      <!-- Resize preview: only shown when image is not square -->
+      <div class="resize-preview" id="resizePreview">
+        <div class="resize-side">
+          <div class="resize-lbl">Your image</div>
+          <div class="resize-box" style="display:flex;align-items:center;justify-content:center;">
+            <img id="resizeOrigImg" src="" style="max-width:100%;max-height:100%;object-fit:contain;">
+          </div>
+        </div>
+        <div class="resize-arrow">→</div>
+        <div class="resize-side">
+          <div class="resize-lbl">After resize</div>
+          <div class="resize-box">
+            <img id="resizeSquareImg" src="" style="object-fit:fill;">
+          </div>
+        </div>
+        <div id="resizeMsg" class="resize-warn"></div>
+      </div>
+      <div class="btns">
+        <button class="sec" onclick="go(1,'b')">← Back</button>
+        <button class="sec" id="changePng" onclick="pickPng()" style="display:none">Change PNG</button>
+        <button class="pri" id="s2next" onclick="go(3)" disabled>Continue →</button>
+      </div>
+      <div class="restore-hint">
+        <button class="restore-hint-btn" onclick="openRestorePanel()">Save corrupted after using?</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SCREEN 3 — Item type
+  ══════════════════════════════════════ -->
+  <div class="screen" id="s3">
+    <h1>Item type</h1>
+    <p class="sub">What kind of custom item is this texture for?</p>
+    <div class="content">
+      <div class="type-grid">
+
+        <div class="type-card" data-key="facepaint" onclick="pickType(this)">
+          <div class="type-ck"><svg width="8" height="8" viewBox="0 0 12 12"><path d="M2 6L5 9L10 3" stroke="#111" stroke-width="2" stroke-linecap="round" fill="none"/></svg></div>
+          <div class="type-icon">🎨</div><div class="type-label">Face Paint</div>
+        </div>
+
+        <div class="type-card on" data-key="goods" onclick="pickType(this)">
+          <div class="type-ck"><svg width="8" height="8" viewBox="0 0 12 12"><path d="M2 6L5 9L10 3" stroke="#111" stroke-width="2" stroke-linecap="round" fill="none"/></svg></div>
+          <div class="type-icon">🛍</div><div class="type-label">Goods</div>
+        </div>
+
+        <div class="type-card" data-key="clothes" onclick="pickType(this)">
+          <div class="type-ck"><svg width="8" height="8" viewBox="0 0 12 12"><path d="M2 6L5 9L10 3" stroke="#111" stroke-width="2" stroke-linecap="round" fill="none"/></svg></div>
+          <div class="type-icon">👕</div><div class="type-label">Clothes</div>
+        </div>
+
+        <div class="type-card" data-key="exterior" onclick="pickType(this)">
+          <div class="type-ck"><svg width="8" height="8" viewBox="0 0 12 12"><path d="M2 6L5 9L10 3" stroke="#111" stroke-width="2" stroke-linecap="round" fill="none"/></svg></div>
+          <div class="type-icon">🏠</div><div class="type-label">Exterior</div>
+        </div>
+
+        <div class="type-card" data-key="interior" onclick="pickType(this)">
+          <div class="type-ck"><svg width="8" height="8" viewBox="0 0 12 12"><path d="M2 6L5 9L10 3" stroke="#111" stroke-width="2" stroke-linecap="round" fill="none"/></svg></div>
+          <div class="type-icon">🛋</div><div class="type-label">Interior</div>
+        </div>
+
+        <div class="type-card" data-key="mapobject" onclick="pickType(this)">
+          <div class="type-ck"><svg width="8" height="8" viewBox="0 0 12 12"><path d="M2 6L5 9L10 3" stroke="#111" stroke-width="2" stroke-linecap="round" fill="none"/></svg></div>
+          <div class="type-icon">🗺</div><div class="type-label">Map Object</div>
+        </div>
+
+        <div class="type-card" data-key="mapfloor" onclick="pickType(this)">
+          <div class="type-ck"><svg width="8" height="8" viewBox="0 0 12 12"><path d="M2 6L5 9L10 3" stroke="#111" stroke-width="2" stroke-linecap="round" fill="none"/></svg></div>
+          <div class="type-icon">🟫</div><div class="type-label">Map Floor</div>
+        </div>
+
+        <div class="type-card" data-key="food" onclick="pickType(this)">
+          <div class="type-ck"><svg width="8" height="8" viewBox="0 0 12 12"><path d="M2 6L5 9L10 3" stroke="#111" stroke-width="2" stroke-linecap="round" fill="none"/></svg></div>
+          <div class="type-icon">🍱</div><div class="type-label">Food</div>
+        </div>
+
+      </div>
+      <div class="btns">
+        <button class="sec" onclick="go(2,'b')">← Back</button>
+        <button class="pri" onclick="goToSlots()">Continue →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SCREEN 4 — Slot picker
+  ══════════════════════════════════════ -->
+  <div class="screen" id="s4">
+    <h1>Choose a slot</h1>
+    <p class="sub">Pick an existing texture to replace, or add a new one.</p>
+    <div class="content">
+      <div class="slots-loading" id="slotsLoading">Loading textures…</div>
+      <div class="slots-grid" id="slotsGrid" style="display:none"></div>
+      <div class="compare-bar" id="compareBar">
+        <div class="compare-side">
+          <div class="compare-lbl">Current</div>
+          <img class="compare-img" id="compareOld" src="" alt="current">
+        </div>
+        <div class="compare-arrow">→</div>
+        <div class="compare-side">
+          <div class="compare-lbl">New</div>
+          <img class="compare-img" id="compareNew" src="" alt="new">
+        </div>
+        <div class="compare-side" style="flex:1;min-width:0;margin-left:4px">
+          <div class="compare-lbl" id="compareSlotLbl"></div>
+          <div class="compare-name" id="compareFileName"></div>
+        </div>
+      </div>
+      <div class="btns">
+        <button class="sec" onclick="go(3,'b')">← Back</button>
+        <button class="sec" id="exportBtn" onclick="exportCurrentSlot()" style="display:none">↓ Export PNG</button>
+        <button class="pri" id="convertBtn" onclick="startConvert()" disabled>Convert</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SCREEN 5 — Processing
+  ══════════════════════════════════════ -->
+  <div class="screen" id="s5">
+    <div class="spinner"></div>
+    <h1>Converting…</h1>
+    <div class="progress-wrap">
+      <div class="progress-track">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+      <div class="step-text" id="stepText">Starting…</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SCREEN 6 — Done
+  ══════════════════════════════════════ -->
+  <div class="screen" id="s6">
+    <svg class="done-icon" viewBox="0 0 64 64" fill="none">
+      <circle cx="32" cy="32" r="30" fill="rgba(170,199,255,.1)"/>
+      <circle cx="32" cy="32" r="22" fill="rgba(170,199,255,.15)"/>
+      <path d="M19 32l10 10L45 22" stroke="var(--accent)" stroke-width="3.2"
+            stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <h1>Files ready!</h1>
+    <p class="sub" style="opacity:1;transform:none;margin-bottom:18px" id="doneSubtitle">
+      3 files written to save folders 0 &amp; 1.
+    </p>
+    <div class="output-list">
+      <div class="ofile">
+        <span class="ofile-icon">🖼</span>
+        <span class="ofile-name" id="out-canvas">—</span>
+        <span class="ofile-tag">canvas</span>
+      </div>
+      <div class="ofile">
+        <span class="ofile-icon">🗜</span>
+        <span class="ofile-name" id="out-ugctex">—</span>
+        <span class="ofile-tag">ugctex</span>
+      </div>
+      <div class="ofile">
+        <span class="ofile-icon">📸</span>
+        <span class="ofile-name" id="out-thumb">—</span>
+        <span class="ofile-tag">thumb</span>
+      </div>
+    </div>
+    <div class="btns">
+      <button class="sec" id="undoBtn" onclick="undoLastConvert()" style="display:none">↩ Undo</button>
+      <button class="sec" onclick="reset()">Convert another</button>
+      <button class="pri" onclick="tauriClose()">Close</button>
+    </div>
+  </div>
+
+  <!-- ══ Restore backup modal ══ -->
+  <div class="restore-overlay" id="restoreOverlay" onclick="overlayBgClick(event)">
+    <div class="restore-panel">
+      <div class="restore-panel-head">
+        <span>🗂 Restore a backup</span>
+        <button class="restore-close-btn" onclick="closeRestorePanel()">✕</button>
+      </div>
+      <div class="restore-list" id="restoreList">
+        <div class="restore-working">Loading backups…</div>
+      </div>
+      <div class="restore-panel-foot">
+        <button class="sec" onclick="closeRestorePanel()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Progress dots (7 dots for screens 0–6) -->
+  <div class="dots" id="dots">
+    <div class="dot on"></div>
+    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+  </div>
+
+</div><!-- .app -->
+<div class="cw" id="cw"></div>
+
+<script>
+const invoke = window.__TAURI__?.core?.invoke || (() => Promise.resolve(null));
+const listen  = window.__TAURI__?.event?.listen  || (() => Promise.resolve(() => {}));
+
+function tauriMinimize() { invoke('minimize_app'); }
+function tauriClose()    { invoke('close_app'); }
+
+// ── State ────────────────────────────────────────────────────────────────────
+let selectedFile    = null;   // { path, preview }
+let selectedType    = 'goods';
+let saveFolder      = null;
+let unlisten        = null;
+let emuSaves        = [];     // cached results from find_emulator_saves
+let lastBackupPath  = null;   // set after each successful conversion for Undo
+
+// ── Startup ───────────────────────────────────────────────────────────────────
+invoke('find_emulator_saves').then(results => { emuSaves = results || []; });
+loadSavedFolder();
+initDragDrop();
+
+// ── Screen navigation ────────────────────────────────────────────────────────
+let cur = 0, busy = false;
+
+function go(to, dir) {
+  if (busy) return;
+  busy = true;
+  const old = document.getElementById('s' + cur);
+  const nw  = document.getElementById('s' + to);
+  old.classList.remove('active');
+  old.classList.add(dir === 'b' ? 'out-bck' : 'out-fwd');
+  setTimeout(() => {
+    old.classList.remove('out-fwd', 'out-bck');
+    nw.classList.add('active');
+    cur = to;
+    document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('on', i === cur));
+    if (to > 0) document.getElementById('dots').classList.add('show');
+    else document.getElementById('dots').classList.remove('show');
+    if (to === 1) renderEmuSuggestions();
+    if (to === 6) setTimeout(confetti, 250);
+    setTimeout(() => busy = false, 380);
+  }, 200);
+}
+
+// ── Emulator suggestion rendering ────────────────────────────────────────────
+function renderEmuSuggestions() {
+  const box     = document.getElementById('emuSuggestions');
+  const divider = document.getElementById('emuDivider');
+  box.innerHTML = '';
+
+  if (!emuSaves.length) {
+    box.style.display  = 'none';
+    divider.style.display = 'none';
+    return;
+  }
+
+  const logoMap = { Ryujinx: 'ryujinx', Eden: 'eden' };
+
+  emuSaves.forEach(s => {
+    const card = document.createElement('div');
+    card.className = 'emu-card';
+    const logoFile = logoMap[s.emulator];
+    const iconHtml = logoFile
+      ? `<img class="emu-icon-img" src="assets/${logoFile}.png" alt="${s.emulator}">`
+      : `<span style="font-size:22px">🎮</span>`;
+    card.innerHTML = `
+      ${iconHtml}
+      <div class="emu-info">
+        <div class="emu-name">${s.emulator} save found</div>
+        <div class="emu-path">${s.path}</div>
+      </div>
+      <button class="emu-use-btn">Use →</button>`;
+    card.querySelector('.emu-use-btn').onclick = () => useEmuSave(s.path);
+    box.appendChild(card);
+  });
+
+  box.style.display  = 'flex';
+  divider.style.display = 'flex';
+}
+
+function applyFolderToUI(path) {
+  saveFolder = path;
+  localStorage.setItem('lastSaveFolder', path);
+  document.getElementById('folderPickBtn').style.display = 'none';
+  const chosen = document.getElementById('folderChosen');
+  chosen.classList.add('show');
+  const pathEl = document.getElementById('folderChosenPath');
+  pathEl.textContent = path;
+  pathEl.classList.add('has-path');
+  document.getElementById('s1next').disabled = false;
+}
+
+function loadSavedFolder() {
+  const saved = localStorage.getItem('lastSaveFolder');
+  if (saved) applyFolderToUI(saved);
+}
+
+function useEmuSave(path) { applyFolderToUI(path); }
+
+// ── Screen 1: UGC folder ─────────────────────────────────────────────────────
+async function pickFolder() {
+  const folder = await invoke('select_folder');
+  if (!folder) return;
+  applyFolderToUI(folder);
+}
+
+function changeFolder() {
+  saveFolder = null;
+  localStorage.removeItem('lastSaveFolder');
+  document.getElementById('folderPickBtn').style.display = '';
+  document.getElementById('folderChosen').classList.remove('show');
+  document.getElementById('folderChosenPath').classList.remove('has-path');
+  document.getElementById('s1next').disabled = true;
+  pickFolder();
+}
+
+// ── Drag & drop ───────────────────────────────────────────────────────────────
+function initDragDrop() {
+  const dz = document.getElementById('dropzone');
+  dz.addEventListener('dragover',  e => { e.preventDefault(); if (cur === 2) dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); }); // visual only
+
+  // Tauri provides actual file paths via its own event
+  listen('tauri://drag-drop', async ev => {
+    dz.classList.remove('drag-over');
+    if (cur !== 2) return;
+    const paths = ev.payload?.paths;
+    if (!paths?.length) return;
+    const path = paths[0];
+    if (!path.toLowerCase().endsWith('.png')) { return; }
+    const result = await invoke('preview_png', { path });
+    if (result) applySelectedFile(result);
+  });
+
+  listen('tauri://drag-enter', () => { if (cur === 2) document.getElementById('dropzone').classList.add('drag-over'); });
+  listen('tauri://drag-leave', () => document.getElementById('dropzone').classList.remove('drag-over'));
+}
+
+// ── Screen 2: PNG picker ─────────────────────────────────────────────────────
+function applySelectedFile(result) {
+  selectedFile = result;
+  document.getElementById('fileThumb').src        = result.preview;
+  document.getElementById('fileName').textContent  = basename(result.path);
+  document.getElementById('fileDim').textContent   = '';
+  document.getElementById('dropzone').style.display    = 'none';
+  document.getElementById('filePreview').classList.add('show');
+  document.getElementById('changePng').style.display   = '';
+  document.getElementById('s2next').disabled = false;
+
+  // Measure dimensions then show resize preview
+  const probe = new Image();
+  probe.onload = () => {
+    const w = probe.naturalWidth, h = probe.naturalHeight;
+    document.getElementById('fileDim').textContent = `${w} × ${h} px`;
+    showResizePreview(result.preview, w, h);
+  };
+  probe.src = result.preview;
+}
+
+function showResizePreview(src, w, h) {
+  const box = document.getElementById('resizePreview');
+  const msg = document.getElementById('resizeMsg');
+  document.getElementById('resizeOrigImg').src   = src;
+  document.getElementById('resizeSquareImg').src = src;
+
+  if (w === h) {
+    // Square — no distortion
+    box.classList.remove('show');
+    return;
+  }
+
+  box.classList.add('show');
+  const ratio = (w / h).toFixed(2);
+  const wider = w > h;
+  msg.className = 'resize-warn';
+  msg.innerHTML = wider
+    ? `⚠ Image is wider than tall (${w}×${h}).<br>It will be <b>squished vertically</b> to fit 512×512.`
+    : `⚠ Image is taller than wide (${w}×${h}).<br>It will be <b>squished horizontally</b> to fit 512×512.`;
+}
+
+async function pickPng() {
+  const result = await invoke('select_png');
+  if (!result) return;
+  applySelectedFile(result);
+}
+
+// ── Screen 3: type picker ────────────────────────────────────────────────────
+function pickType(el) {
+  document.querySelectorAll('.type-card').forEach(c => c.classList.remove('on'));
+  el.classList.add('on');
+  selectedType = el.dataset.key;
+}
+
+// ── Screen 4: slot picker ────────────────────────────────────────────────────
+let selectedSlotId = null;
+
+async function goToSlots() {
+  go(4);
+  selectedSlotId = null;
+  document.getElementById('convertBtn').disabled = true;
+  document.getElementById('slotsLoading').style.display = '';
+  document.getElementById('slotsGrid').style.display = 'none';
+  document.getElementById('slotsGrid').innerHTML = '';
+  document.getElementById('compareBar').classList.remove('show');
+
+  const data = await invoke('get_texture_slots', { saveFolder, itemType: selectedType });
+  renderSlots(data ? data.slots : []);
+}
+
+function renderSlots(slots) {
+  const grid = document.getElementById('slotsGrid');
+  grid.innerHTML = '';
+
+  if (slots.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'slots-empty';
+    empty.innerHTML = 'No UGC textures found for this type.<br>Launch the game first to generate slots.';
+    grid.appendChild(empty);
+  } else {
+    slots.forEach(slot => grid.appendChild(makeSlotCard(slot.id, slot.preview, slot.warning)));
+  }
+
+  document.getElementById('slotsLoading').style.display = 'none';
+  grid.style.display = '';
+}
+
+function makeSlotCard(id, preview, warning) {
+  const card = document.createElement('div');
+  card.className = 'slot-card';
+  card.style.position = 'relative';
+  card.dataset.id = id;
+  card.onclick = () => selectSlot(card, id, warning, preview);
+
+  if (warning) {
+    const badge = document.createElement('div');
+    badge.className = 'slot-warn';
+    badge.title = 'Only saved in folder 1 — not yet confirmed in folder 0. Replacing is not recommended until the game saves it to both locations.';
+    badge.textContent = '!';
+    card.appendChild(badge);
+  }
+
+  if (preview) {
+    const img = document.createElement('img');
+    img.className = 'slot-thumb';
+    img.src = preview;
+    card.appendChild(img);
+  } else {
+    const ph = document.createElement('div');
+    ph.className = 'slot-empty';
+    ph.textContent = '?';
+    card.appendChild(ph);
+  }
+
+  const lbl = document.createElement('div');
+  lbl.className = 'slot-label';
+  lbl.textContent = '#' + String(id).padStart(3, '0');
+  card.appendChild(lbl);
+
+  return card;
+}
+
+function selectSlot(card, id, warning, preview) {
+  document.querySelectorAll('.slot-card').forEach(c => c.classList.remove('on'));
+  card.classList.add('on');
+  selectedSlotId = id;
+  const btn = document.getElementById('convertBtn');
+  if (warning) {
+    btn.textContent = '⚠ Convert anyway';
+    btn.title = 'This texture is only saved in folder 1 and not yet in folder 0. It may not be fully saved yet — proceed with caution.';
+  } else {
+    btn.textContent = 'Convert';
+    btn.title = '';
+  }
+  btn.disabled = false;
+  document.getElementById('exportBtn').style.display = '';
+
+  // Before/after compare bar
+  const bar = document.getElementById('compareBar');
+  const oldImg = document.getElementById('compareOld');
+  const newImg = document.getElementById('compareNew');
+  oldImg.src = preview || '';
+  oldImg.style.opacity = preview ? '1' : '0.2';
+  newImg.src = selectedFile?.preview || '';
+  document.getElementById('compareSlotLbl').textContent = 'Slot #' + String(id).padStart(3, '0');
+  document.getElementById('compareFileName').textContent = selectedFile ? basename(selectedFile.path) : '';
+  bar.classList.add('show');
+}
+
+// ── Screen 5: conversion ─────────────────────────────────────────────────────
+async function startConvert() {
+  const id = selectedSlotId;
+  if (!selectedFile || !saveFolder || !id) return;
+
+  go(5);
+
+  unlisten = await listen('progress', ev => {
+    const { step, pct } = ev.payload;
+    document.getElementById('stepText').textContent    = step;
+    document.getElementById('progressBar').style.width = (pct * 100) + '%';
+  });
+
+  try {
+    const result = await invoke('convert_texture', {
+      pngPath:      selectedFile.path,
+      saveFolder,
+      itemType:     selectedType,
+      itemId:       selectedSlotId,
+    });
+
+    if (unlisten) { unlisten(); unlisten = null; }
+
+    document.getElementById('out-canvas').textContent = basename(result.canvas);
+    document.getElementById('out-ugctex').textContent = basename(result.ugctex);
+    document.getElementById('out-thumb').textContent  = basename(result.thumb);
+    document.getElementById('doneSubtitle').textContent =
+      '3 files written to save folder' + (result.folders.length > 1 ? 's ' : ' ') +
+      result.folders.join(' & ') + '.';
+
+    // Grab the newest backup path for the Undo button
+    const backups = await invoke('list_backups', { saveFolder }) || [];
+    lastBackupPath = backups[0]?.path || null;
+    document.getElementById('undoBtn').style.display = lastBackupPath ? '' : 'none';
+
+    go(6);
+
+  } catch (err) {
+    if (unlisten) { unlisten(); unlisten = null; }
+    alert('Conversion failed:\n' + err);
+    go(4, 'b');
+  }
+}
+
+// ── Restore panel ────────────────────────────────────────────────────────────
+async function openRestorePanel() {
+  const overlay = document.getElementById('restoreOverlay');
+  const list    = document.getElementById('restoreList');
+  list.innerHTML = '<div class="restore-working">Loading backups…</div>';
+  overlay.classList.add('open');
+
+  const backups = await invoke('list_backups', { saveFolder }) || [];
+  list.innerHTML = '';
+
+  if (!backups.length) {
+    list.innerHTML = `<div class="restore-empty">
+      No backups found yet.<br>
+      A backup is created automatically before each conversion.
+    </div>`;
+    return;
+  }
+
+  backups.forEach(b => {
+    const item = document.createElement('div');
+    item.className = 'restore-item';
+    item.innerHTML = `
+      <div class="restore-item-info">
+        <div class="restore-item-label">🕐 ${b.label}</div>
+        <div class="restore-item-path">${b.path}</div>
+      </div>
+      <button class="restore-item-btn">Restore</button>`;
+    item.querySelector('.restore-item-btn').onclick = e => {
+      e.stopPropagation();
+      doRestore(b.path, b.label);
+    };
+    list.appendChild(item);
+  });
+}
+
+function closeRestorePanel() {
+  document.getElementById('restoreOverlay').classList.remove('open');
+}
+
+function overlayBgClick(e) {
+  if (e.target === document.getElementById('restoreOverlay')) closeRestorePanel();
+}
+
+async function doRestore(backupPath, label) {
+  const ok = confirm(
+    `Restore save to:\n"${label}"\n\n` +
+    `This will replace your current save folders 0 and 1 with this backup.\n` +
+    `Continue?`
+  );
+  if (!ok) return;
+
+  const list = document.getElementById('restoreList');
+  list.innerHTML = '<div class="restore-working">Restoring… please wait.</div>';
+
+  try {
+    await invoke('restore_backup', { saveFolder, backupPath });
+    closeRestorePanel();
+    alert('✅ Save restored successfully!\nRestart your emulator for the changes to take effect.');
+  } catch (err) {
+    list.innerHTML = `<div class="restore-empty" style="color:#ff9a9a">
+      Restore failed:<br>${err}
+    </div>`;
+  }
+}
+
+// ── Export slot texture ───────────────────────────────────────────────────────
+async function exportCurrentSlot() {
+  if (!selectedSlotId || !saveFolder) return;
+  const btn = document.getElementById('exportBtn');
+  const orig = btn.textContent;
+  btn.textContent = 'Exporting…';
+  btn.disabled = true;
+  try {
+    const savedPath = await invoke('export_slot_texture', {
+      saveFolder,
+      itemType: selectedType,
+      itemId:   selectedSlotId,
+    });
+    if (savedPath) {
+      btn.textContent = '✓ Saved!';
+      setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2000);
+    } else {
+      btn.textContent = orig; btn.disabled = false;
+    }
+  } catch (err) {
+    if (err !== 'cancelled') alert('Export failed:\n' + err);
+    btn.textContent = orig;
+    btn.disabled = false;
+  }
+}
+
+// ── Undo last conversion ─────────────────────────────────────────────────────
+async function undoLastConvert() {
+  if (!lastBackupPath) return;
+  const ok = confirm('Undo the last conversion?\nThis restores the save to exactly how it was before you converted.');
+  if (!ok) return;
+  try {
+    await invoke('restore_backup', { saveFolder, backupPath: lastBackupPath });
+    lastBackupPath = null;
+    document.getElementById('undoBtn').style.display = 'none';
+    alert('✅ Undone! Restart your emulator for the changes to take effect.');
+  } catch (err) {
+    alert('Undo failed:\n' + err);
+  }
+}
+
+// ── Reset ────────────────────────────────────────────────────────────────────
+function reset() {
+  selectedFile = null;
+  saveFolder = null;
+
+  // Reset folder screen
+  document.getElementById('folderPickBtn').style.display   = '';
+  document.getElementById('folderChosen').classList.remove('show');
+  document.getElementById('s1next').disabled = true;
+
+  // Reset PNG screen
+  document.getElementById('dropzone').style.display    = '';
+  document.getElementById('filePreview').classList.remove('show');
+  document.getElementById('changePng').style.display   = 'none';
+  document.getElementById('s2next').disabled           = true;
+  document.getElementById('resizePreview').classList.remove('show');
+
+  // Reset slot screen
+  selectedSlotId = null;
+  document.getElementById('slotsGrid').innerHTML = '';
+  document.getElementById('slotsGrid').style.display = 'none';
+  document.getElementById('slotsLoading').style.display = '';
+  document.getElementById('compareBar').classList.remove('show');
+  document.getElementById('exportBtn').style.display = 'none';
+  const cb = document.getElementById('convertBtn');
+  cb.disabled = true;
+  cb.textContent = 'Convert';
+  cb.title = '';
+
+  // Reset done screen
+  lastBackupPath = null;
+  document.getElementById('undoBtn').style.display = 'none';
+
+  // Reset progress
+  document.getElementById('progressBar').style.width = '0%';
+  document.getElementById('stepText').textContent = 'Starting…';
+
+  // Back to welcome
+  const nw = document.getElementById('s0');
+  document.getElementById('s' + cur).classList.remove('active');
+  nw.classList.add('active');
+  cur = 0;
+  document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('on', i === 0));
+  document.getElementById('dots').classList.remove('show');
+}
+
+// ── Confetti ──────────────────────────────────────────────────────────────────
+function confetti() {
+  const w    = document.getElementById('cw');
+  const cols = ['var(--accent)','#ff6b6b','#ffd93d','#6bffb8','#c084fc','#74d0f1'];
+  for (let i = 0; i < 55; i++) {
+    const c = document.createElement('div');
+    c.className = 'cf';
+    c.style.cssText = `left:${Math.random()*100}%;background:${cols[i%cols.length]};
+      animation-delay:${Math.random()*.6}s;animation-duration:${2+Math.random()*1.4}s;
+      width:${4+Math.random()*5}px;height:${4+Math.random()*5}px;
+      border-radius:${Math.random()>.5?'50%':'2px'}`;
+    w.appendChild(c);
+  }
+  setTimeout(() => w.innerHTML = '', 4000);
+}
+
+function basename(p) { return p.replace(/.*[/\\]/, ''); }
+
+document.addEventListener('keydown', e => {
+  // Close restore panel with Escape if open
+  if (e.key === 'Escape') {
+    if (document.getElementById('restoreOverlay').classList.contains('open')) {
+      closeRestorePanel(); return;
+    }
+    return; // don't close app on Escape
+  }
+
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    switch (cur) {
+      case 0: go(1); break;
+      case 1: if (saveFolder)       document.getElementById('s1next').click();   break;
+      case 2: if (selectedFile)     document.getElementById('s2next').click();    break;
+      case 3: goToSlots(); break;
+      case 4: if (selectedSlotId)   document.getElementById('convertBtn').click(); break;
+      case 6: reset(); break;
+    }
+    return;
+  }
+
+  // Backspace = go back (screens 1–4 only)
+  if (e.key === 'Backspace' && !e.target.matches('input,textarea')) {
+    if (cur === 1) go(0, 'b');
+    else if (cur === 2) go(1, 'b');
+    else if (cur === 3) go(2, 'b');
+    else if (cur === 4) go(3, 'b');
+    return;
+  }
+
+  // Arrow keys navigate slots on screen 4
+  if (cur === 4 && (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+    e.preventDefault();
+    const cards = [...document.querySelectorAll('.slot-card')];
+    if (!cards.length) return;
+    const onIdx = cards.findIndex(c => c.classList.contains('on'));
+    const cols = 5;
+    let next;
+    if (e.key === 'ArrowRight') next = Math.min(onIdx + 1, cards.length - 1);
+    else if (e.key === 'ArrowLeft')  next = Math.max(onIdx - 1, 0);
+    else if (e.key === 'ArrowDown')  next = Math.min(onIdx + cols, cards.length - 1);
+    else if (e.key === 'ArrowUp')    next = Math.max(onIdx - cols, 0);
+    if (next !== undefined && next !== onIdx) cards[next].click();
+  }
+});
+</script>
+</body>
+</html>

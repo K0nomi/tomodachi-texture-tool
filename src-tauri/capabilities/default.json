@@ -1,0 +1,9 @@
+{
+  "identifier": "default",
+  "description": "",
+  "windows": ["main"],
+  "permissions": [
+    "dialog:default",
+    "core:event:default"
+  ]
+}
