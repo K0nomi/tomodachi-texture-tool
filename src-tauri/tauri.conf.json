@@ -27,7 +27,10 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
-    "icon": ["icons/icon.ico"]
+    "targets": ["nsis", "dmg", "appimage", "deb"],
+    "icon": ["icons/icon.ico"],
+    "nsis": {
+      "installMode": "currentUser"
+    }
   }
 }
