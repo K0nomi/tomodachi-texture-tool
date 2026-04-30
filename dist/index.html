@@ -31,7 +31,8 @@ html, body {
   user-select:none;
 }
 body { -webkit-app-region:drag; }
-button,input,a,.type-card,.ofile { -webkit-app-region:no-drag; }
+button,input,a,.type-card,.ofile,
+.restore-overlay,.restore-panel,.restore-list,.restore-item { -webkit-app-region:no-drag; }
 
 .app {
   width:100%; height:100%;
@@ -141,7 +142,7 @@ h1 {
 .screen.active .pri { opacity:1; transform:none; }
 .pri:hover { background:#fff; box-shadow:0 4px 20px rgba(0,0,0,.25); transform:translateY(-1px) !important; }
 .pri:active { transform:scale(.97) !important; }
-.pri:disabled { opacity:.35 !important; cursor:not-allowed; transform:none !important; box-shadow:none !important; }
+.pri:disabled { opacity:.35 !important; pointer-events:none; transform:none !important; box-shadow:none !important; }
 
 .sec {
   background:transparent; color:var(--text2);
@@ -333,7 +334,7 @@ h1 {
   cursor:pointer; transition:all .2s cubic-bezier(.4,0,.2,1);
   -webkit-app-region:no-drag;
 }
-.slot-card:hover { border-color:rgba(255,255,255,.22); background:var(--card-h); transform:translateY(-2px); }
+.slot-card:hover { border-color:rgba(255,255,255,.22); background:var(--card-h); box-shadow:0 4px 12px rgba(0,0,0,.3); }
 .slot-card.on { border-color:var(--accent); background:var(--card-on); box-shadow:0 0 0 1px var(--accent); }
 .slot-thumb {
   width:56px; height:56px; border-radius:6px;
@@ -376,15 +377,16 @@ h1 {
 
 /* ── Before/after compare bar ──────────────── */
 .compare-bar {
-  display:none; align-items:center; gap:10px;
+  display:flex; align-items:center; gap:10px;
   width:100%; max-width:560px;
   padding:10px 14px; margin-bottom:10px;
   background:var(--card); border:1.5px solid var(--border);
   border-radius:12px;
-  opacity:0; transform:translateY(6px);
-  transition:opacity .25s, transform .25s;
+  opacity:0; visibility:hidden; pointer-events:none;
+  transform:translateY(6px);
+  transition:opacity .25s, transform .25s, visibility .25s;
 }
-.compare-bar.show { display:flex; opacity:1; transform:none; }
+.compare-bar.show { opacity:1; visibility:visible; pointer-events:auto; transform:none; }
 .compare-img {
   width:52px; height:52px; border-radius:8px;
   object-fit:cover; image-rendering:pixelated;
@@ -434,11 +436,12 @@ h1 {
 
 .restore-list {
   display:flex; flex-direction:column; gap:7px;
-  max-height:270px; overflow-y:auto; padding-right:2px;
+  max-height:270px; overflow-y:auto; padding-right:4px;
 }
-.restore-list::-webkit-scrollbar { width:4px; }
+.restore-list::-webkit-scrollbar { width:8px; }
 .restore-list::-webkit-scrollbar-track { background:transparent; }
-.restore-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+.restore-list::-webkit-scrollbar-thumb { background:rgba(255,255,255,.18); border-radius:4px; }
+.restore-list::-webkit-scrollbar-thumb:hover { background:rgba(255,255,255,.32); }
 
 .restore-item {
   display:flex; align-items:center; gap:12px;
@@ -847,8 +850,8 @@ function go(to, dir) {
     else document.getElementById('dots').classList.remove('show');
     if (to === 1) renderEmuSuggestions();
     if (to === 6) setTimeout(confetti, 250);
-    setTimeout(() => busy = false, 380);
-  }, 200);
+    setTimeout(() => busy = false, 210);
+  }, 120);
 }
 
 // ── Emulator suggestion rendering ────────────────────────────────────────────

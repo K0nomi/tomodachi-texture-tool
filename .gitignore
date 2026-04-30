@@ -2,7 +2,5 @@ node_modules/
 src-tauri/target/
 .idea/
 .claude/
-__pycache__/
-*.pyc
 *.pdb
 .env

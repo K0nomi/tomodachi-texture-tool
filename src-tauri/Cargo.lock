@@ -3989,7 +3989,7 @@ checksum = "756daf9b1013ebe47a8776667b466417e2d4c5679d441c26230efd9ef78692db"
 
 [[package]]
 name = "tomodachi-texture-tool"
-version = "0.2.0"
+version = "2.0.0"
 dependencies = [
  "base64 0.22.1",
  "image",
