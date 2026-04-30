@@ -29,8 +29,10 @@
     "active": true,
     "targets": ["nsis", "dmg", "appimage", "deb"],
     "icon": ["icons/icon.ico"],
-    "nsis": {
-      "installMode": "currentUser"
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      }
     }
   }
 }
