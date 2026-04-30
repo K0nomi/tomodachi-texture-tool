@@ -15,10 +15,10 @@ jobs:
         include:
           - platform: windows-latest
             args: ''
-          - platform: macos-latest
-            args: '--target aarch64-apple-darwin'
-          - platform: macos-latest
+          - platform: macos-13        # Intel — x86_64
             args: '--target x86_64-apple-darwin'
+          - platform: macos-latest    # Apple Silicon — aarch64
+            args: '--target aarch64-apple-darwin'
           - platform: ubuntu-22.04
             args: ''
 
@@ -34,7 +34,11 @@ jobs:
             libwebkit2gtk-4.1-dev \
             libappindicator3-dev \
             librsvg2-dev \
-            patchelf
+            patchelf \
+            libxcb-shape0-dev \
+            libxcb-xfixes0-dev \
+            libx11-dev \
+            libxdo-dev
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -44,7 +48,7 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          targets: ${{ startsWith(matrix.platform, 'macos') && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: Cache Rust build
         uses: swatinem/rust-cache@v2
@@ -67,9 +71,9 @@ jobs:
             ### Download
             | Platform | File |
             |----------|------|
-            | Windows  | `.msi` or `.exe` |
-            | macOS (Apple Silicon) | `-aarch64.dmg` |
-            | macOS (Intel) | `-x64.dmg` |
+            | Windows  | `.exe` installer |
+            | macOS (Apple Silicon) | `_aarch64.dmg` |
+            | macOS (Intel)         | `_x64.dmg` |
             | Linux | `.AppImage` or `.deb` |
           releaseDraft: false
           prerelease: false
