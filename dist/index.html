@@ -1134,11 +1134,13 @@ async function startConvert() {
     lastBackupPath = backups[0]?.path || null;
     document.getElementById('undoBtn').style.display = lastBackupPath ? '' : 'none';
 
+    busy = false;
     go(6);
 
   } catch (err) {
     if (unlisten) { unlisten(); unlisten = null; }
     alert('Conversion failed:\n' + err);
+    busy = false;
     go(4, 'b');
   }
 }
