@@ -75,13 +75,19 @@ jobs:
       - run: npm install
 
       # ── Windows: portable .exe ──────────────────────────────────────────────
-      - name: Build and upload portable exe
+      - name: Build portable exe
+        if: matrix.platform == 'windows-latest'
+        run: npm run tauri build -- --bundles none
+
+      - name: Rename exe
         if: matrix.platform == 'windows-latest'
         shell: bash
-        run: |
-          npm run tauri build -- --bundles none
-          mv src-tauri/target/release/tomodachi-texture-tool.exe src-tauri/target/release/TomodachiTextureTool.exe
-          gh release upload ${{ github.ref_name }} src-tauri/target/release/TomodachiTextureTool.exe
+        run: mv src-tauri/target/release/tomodachi-texture-tool.exe src-tauri/target/release/TomodachiTextureTool.exe
+
+      - name: Upload exe to release
+        if: matrix.platform == 'windows-latest'
+        shell: bash
+        run: gh release upload ${{ github.ref_name }} src-tauri/target/release/TomodachiTextureTool.exe --clobber
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
