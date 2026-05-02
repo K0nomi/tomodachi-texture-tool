@@ -77,7 +77,7 @@ jobs:
       # ── Windows: portable .exe ──────────────────────────────────────────────
       - name: Build portable exe
         if: matrix.platform == 'windows-latest'
-        run: npm run tauri build -- --bundles none
+        run: npm run build -- --bundles none
 
       - name: Rename exe
         if: matrix.platform == 'windows-latest'
