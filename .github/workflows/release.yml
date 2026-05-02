@@ -14,11 +14,9 @@ jobs:
       matrix:
         include:
           - platform: windows-latest
-            args: ''
           - platform: macos-latest
             args: '--target aarch64-apple-darwin'
           - platform: ubuntu-22.04
-            args: ''
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -38,25 +36,51 @@ jobs:
             libx11-dev \
             libxdo-dev
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: lts/*
 
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin' || '' }}
 
-      - name: Cache Rust build
-        uses: swatinem/rust-cache@v2
+      - uses: swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
 
-      - name: Install frontend dependencies
-        run: npm install
+      - run: npm install
 
-      - name: Build and publish release
+      # ── Windows: portable .exe, no installer ──────────────────────────────────
+      - name: Build portable exe
+        if: matrix.platform == 'windows-latest'
+        run: npm run tauri build -- --bundles none
+
+      - name: Rename exe
+        if: matrix.platform == 'windows-latest'
+        shell: bash
+        run: mv src-tauri/target/release/tomodachi-texture-tool.exe src-tauri/target/release/TomodachiTextureTool.exe
+
+      - name: Upload portable exe to release
+        if: matrix.platform == 'windows-latest'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: 'Tomodachi Texture Tool ${{ github.ref_name }}'
+          body: |
+            Custom texture converter for Tomodachi Life (Nintendo Switch / Emulator).
+
+            ### Download
+            | Platform | File |
+            |----------|------|
+            | Windows  | `TomodachiTextureTool.exe` — portable, einfach starten |
+            | macOS (Apple Silicon) | `_aarch64.dmg` |
+            | Linux | `.AppImage` or `.deb` |
+          files: src-tauri/target/release/TomodachiTextureTool.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── macOS + Linux: normale Bundles ────────────────────────────────────────
+      - name: Build and publish
+        if: matrix.platform != 'windows-latest'
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -69,9 +93,9 @@ jobs:
             ### Download
             | Platform | File |
             |----------|------|
-            | Windows  | `.exe` installer |
+            | Windows  | `TomodachiTextureTool.exe` — portable, einfach starten |
             | macOS (Apple Silicon) | `_aarch64.dmg` |
             | Linux | `.AppImage` or `.deb` |
           releaseDraft: false
           prerelease: false
-          args: ${{ matrix.args }}
+          args: ${{ matrix.args || '' }}
